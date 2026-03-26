@@ -1,0 +1,41 @@
+{
+	"Name": "中国股票价格",
+	"Version": "1.0.0.0",
+	"Author": "gdby",
+	"CodePath": "bin/plugin.js",
+	"Description": "实时显示中国股票价格，支持沪深主板、创业板、科创板",
+	"Icon": "imgs/plugin/icon",
+	"Category": "股票行情",
+	"CategoryIcon": "imgs/plugin/category-icon",
+	"Actions": [
+		{
+			"Name": "股票价格",
+			"UUID": "com.gdby.stockprice.single",
+			"Icon": "imgs/actions/stock/icon",
+			"Tooltip": "实时显示中国股票价格",
+			"PropertyInspectorPath": "ui/stock-config.html",
+			"Controllers": ["Keypad"],
+			"States": [
+				{
+					"Image": "imgs/actions/stock/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		}
+	],
+	"SDKVersion": 2,
+	"Software": {
+		"MinimumVersion": "6.5"
+	},
+	"OS": [
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "enabled"
+	},
+	"UUID": "com.gdby.stockprice"
+}

@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+com.gdby.stockprice.sdPlugin/bin/*.js
+com.gdby.stockprice.sdPlugin/bin/package.json
+
+# Plugin package
+*.streamDeckPlugin
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log

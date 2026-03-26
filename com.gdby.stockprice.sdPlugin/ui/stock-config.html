@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+	<head lang="en">
+		<meta charset="utf-8" />
+		<script src="https://sdpi-components.dev/releases/v3/sdpi-components.js"></script>
+	</head>
+	<body>
+		<sdpi-item label="类型">
+			<sdpi-select setting="assetType" placeholder="选择类型">
+				<option value="stock">股票</option>
+				<option value="index">大盘指数</option>
+				<option value="gold">黄金/期货</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="代码">
+			<sdpi-textfield setting="stockCode" placeholder="输入代码"></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="说明">
+			<sdpi-label>大盘指数: 000001(上证) / 399001(深成) / 399006(创业板)</sdpi-label>
+			<sdpi-label>股票: 600000 / 000001 / 300750</sdpi-label>
+			<sdpi-label>国际金: GC / 国内金: AU0 / AU99.99</sdpi-label>
+		</sdpi-item>
+	</body>
+</html>
