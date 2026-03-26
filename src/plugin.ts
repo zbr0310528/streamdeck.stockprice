@@ -29,29 +29,48 @@ const INDEX_NAMES: Record<string, string> = {
 	"000688": "科创50"
 };
 
-const COLOR_UP = "#FFCCCC";
-const COLOR_DOWN = "#CCFFCC";
-const COLOR_NEUTRAL = "#EEEEEE";
+const COLOR_UP = "#FF0000";
+const COLOR_DOWN = "#00AA00";
+const COLOR_NEUTRAL = "#666666";
+const BG_COLOR = "#222222";
 
-function createColorPngDataUrl(hexColor: string): string {
+function createTextPng(textLines: string[], textColor: string): string {
 	const width = 144;
 	const height = 144;
+	const lineHeight = 24;
+	const startY = 30;
 
-	const r = parseInt(hexColor.slice(1, 3), 16);
-	const g = parseInt(hexColor.slice(3, 5), 16);
-	const b = parseInt(hexColor.slice(5, 7), 16);
+	const r = parseInt(textColor.slice(1, 3), 16);
+	const g = parseInt(textColor.slice(3, 5), 16);
+	const b = parseInt(textColor.slice(5, 7), 16);
 
 	const rawData = Buffer.alloc(height * (width * 4 + 1));
 	for (let y = 0; y < height; y++) {
 		rawData[y * (width * 4 + 1)] = 0;
 		for (let x = 0; x < width; x++) {
 			const offset = y * (width * 4 + 1) + 1 + x * 4;
-			rawData[offset] = r;
-			rawData[offset + 1] = g;
-			rawData[offset + 2] = b;
+			rawData[offset] = 34;
+			rawData[offset + 1] = 34;
+			rawData[offset + 2] = 34;
 			rawData[offset + 3] = 255;
 		}
 	}
+
+	const charWidth = 12;
+	const totalWidth = 144;
+	const fontChars = new Set(["0","1","2","3","4","5","6","7","8","9","+","-",".","%","¥","$"]);
+	textLines.forEach((line, index) => {
+		const y = startY + index * lineHeight;
+		let x = (totalWidth - line.length * charWidth) / 2;
+		if (x < 0) x = 0;
+
+		for (let i = 0; i < line.length && x < width - charWidth; i++) {
+			if (fontChars.has(line[i].toUpperCase())) {
+				drawChar(rawData, line[i], Math.floor(x), y, r, g, b, width);
+				x += charWidth;
+			}
+		}
+	});
 
 	const deflated = zlib.deflateSync(rawData, { level: 9 });
 
@@ -68,6 +87,79 @@ function createColorPngDataUrl(hexColor: string): string {
 	chunks.push(createPngChunk("IEND", Buffer.alloc(0)));
 
 	return "data:image/png;base64," + Buffer.concat(chunks).toString("base64");
+}
+
+function createColorBgImg(textColor: string): string {
+	const width = 144;
+	const height = 144;
+	const r = parseInt(textColor.slice(1, 3), 16);
+	const g = parseInt(textColor.slice(3, 5), 16);
+	const b = parseInt(textColor.slice(5, 7), 16);
+	const rawData = Buffer.alloc(height * (width * 4 + 1));
+	for (let y = 0; y < height; y++) {
+		rawData[y * (width * 4 + 1)] = 0;
+		for (let x = 0; x < width; x++) {
+			const offset = y * (width * 4 + 1) + 1 + x * 4;
+			rawData[offset] = r;
+			rawData[offset + 1] = g;
+			rawData[offset + 2] = b;
+			rawData[offset + 3] = 255;
+		}
+	}
+	const deflated = zlib.deflateSync(rawData, { level: 9 });
+	const ihdrData = Buffer.alloc(13);
+	ihdrData.writeUInt32BE(width, 0);
+	ihdrData.writeUInt32BE(height, 4);
+	ihdrData[8] = 8;
+	ihdrData[9] = 6;
+	const chunks: Buffer[] = [];
+	chunks.push(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]));
+	chunks.push(createPngChunk("IHDR", ihdrData));
+	chunks.push(createPngChunk("IDAT", deflated));
+	chunks.push(createPngChunk("IEND", Buffer.alloc(0)));
+	return "data:image/png;base64," + Buffer.concat(chunks).toString("base64");
+}
+
+function drawChar(rawData: Buffer, char: string, x: number, y: number, r: number, g: number, b: number, width: number): void {
+	const font5x7: Record<string, number[][]> = {
+		"0": [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,1,1],[1,0,1,0,1],[1,1,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+		"1": [[0,0,1,0,0],[0,1,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,1,1,0]],
+		"2": [[0,1,1,1,0],[1,0,0,0,1],[0,0,0,0,1],[0,0,1,1,0],[0,1,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+		"3": [[0,1,1,1,0],[1,0,0,0,1],[0,0,0,0,1],[0,0,1,1,0],[0,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+		"4": [[0,0,0,1,0],[0,0,1,1,0],[0,1,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,1,0],[0,0,0,1,0]],
+		"5": [[1,1,1,1,1],[1,0,0,0,0],[1,1,1,1,0],[0,0,0,0,1],[0,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+		"6": [[0,0,1,1,0],[0,1,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+		"7": [[1,1,1,1,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,0,0,0],[0,1,0,0,0]],
+		"8": [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+		"9": [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,1],[0,0,0,0,1],[0,0,0,1,0],[0,1,1,0,0]],
+		"+": [[0,0,0,0,0],[0,0,1,0,0],[0,0,1,0,0],[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0],[0,0,0,0,0]],
+		"-": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+		"%": [[1,1,0,0,1],[1,1,0,1,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[1,1,0,1,1],[1,0,0,1,1]],
+		".": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,1,0,0]],
+		"¥": [[0,1,1,1,0],[1,0,1,0,0],[1,1,1,1,0],[0,0,1,0,0],[0,1,1,1,0],[0,0,0,0,0],[0,1,1,0,0]],
+		"$": [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[0,1,1,1,0],[0,0,0,1,0],[1,0,0,0,1],[0,1,1,1,0]],
+	};
+
+	const upperChar = char.toUpperCase();
+	const dotMatrix = font5x7[upperChar];
+
+	if (dotMatrix) {
+		for (let dy = 0; dy < 7; dy++) {
+			for (let dx = 0; dx < 5; dx++) {
+				if (dotMatrix[dy][dx]) {
+					const px = x + dx;
+					const py = y + dy;
+					if (px >= 0 && px < width && py >= 0 && py < 144) {
+						const offset = py * (width * 4 + 1) + 1 + px * 4;
+						rawData[offset] = r;
+						rawData[offset + 1] = g;
+						rawData[offset + 2] = b;
+						rawData[offset + 3] = 255;
+					}
+				}
+			}
+		}
+	}
 }
 
 function createPngChunk(type: string, data: Buffer): Buffer {
@@ -158,14 +250,16 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 		const { stockCode, assetType } = settings;
 
 		if (!stockCode) {
-			await action.setTitle("请配置\n代码");
+			await action.setImage(createColorBgImg(COLOR_NEUTRAL));
+			await action.setTitle("无代码");
 			return;
 		}
 
 		if (assetType === "index") {
 			const indexData = await this.fetchIndexPrice(stockCode);
 			if (!indexData) {
-				await action.setTitle(stockCode + "\n获取失败");
+				await action.setImage(createColorBgImg(COLOR_NEUTRAL));
+				await action.setTitle("获取失败");
 				return;
 			}
 
@@ -173,13 +267,14 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 			const change = indexData.changePercent;
 			const changeSymbol = change >= 0 ? "+" : "";
 
-			const title = indexData.name + "\n" + price + "\n" + changeSymbol + change.toFixed(2) + "%";
-			await action.setTitle(title);
-			await action.setImage(createColorPngDataUrl(this.getColorForChange(change)));
+			const textColor = this.getColorForChange(change);
+			await action.setImage(createColorBgImg(textColor));
+			await action.setTitle(`${indexData.name}\n${price}\n${changeSymbol}${change.toFixed(2)}%`);
 		} else if (assetType === "gold") {
 			const goldData = await this.fetchGoldPrice(stockCode);
 			if (!goldData) {
-				await action.setTitle(stockCode + "\n获取失败");
+				await action.setImage(createColorBgImg(COLOR_NEUTRAL));
+				await action.setTitle("获取失败");
 				return;
 			}
 
@@ -188,13 +283,14 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 			const changeSymbol = change >= 0 ? "+" : "";
 			const unit = goldData.unit === "USD" ? "$" : "¥";
 
-			const title = goldData.name + "\n" + unit + price + "\n" + changeSymbol + change.toFixed(2) + "%";
-			await action.setTitle(title);
-			await action.setImage(createColorPngDataUrl(this.getColorForChange(change)));
+			const textColor = this.getColorForChange(change);
+			await action.setImage(createColorBgImg(textColor));
+			await action.setTitle(`${goldData.name}\n${unit}${price}\n${changeSymbol}${change.toFixed(2)}%`);
 		} else {
 			const stockData = await this.fetchStockPrice(stockCode);
 			if (!stockData) {
-				await action.setTitle(stockCode + "\n获取失败");
+				await action.setImage(createColorBgImg(COLOR_NEUTRAL));
+				await action.setTitle("获取失败");
 				return;
 			}
 
@@ -204,9 +300,9 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				: 0;
 			const changeSymbol = changePercent >= 0 ? "+" : "";
 
-			const title = stockData.name + "\n¥" + price + "\n" + changeSymbol + changePercent.toFixed(2) + "%";
-			await action.setTitle(title);
-			await action.setImage(createColorPngDataUrl(this.getColorForChange(changePercent)));
+			const textColor = this.getColorForChange(changePercent);
+			await action.setImage(createColorBgImg(textColor));
+			await action.setTitle(`${stockData.name}\n¥${price}\n${changeSymbol}${changePercent.toFixed(2)}%`);
 		}
 	}
 
@@ -289,19 +385,19 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 			} else if (code === "AU0") {
 				fullCode = "nf_AU0";
 				unit = "CNY";
-				namePrefix = "沪金";
+				namePrefix = "HJ";
 			} else if (code === "AG0") {
 				fullCode = "nf_AG0";
 				unit = "CNY";
-				namePrefix = "沪银";
+				namePrefix = "HY";
 			} else if (code === "CU0") {
 				fullCode = "nf_CU0";
 				unit = "CNY";
-				namePrefix = "沪铜";
+				namePrefix = "HT";
 			} else if (code === "AU99.99") {
 				fullCode = "gpc_AU99.99";
 				unit = "CNY";
-				namePrefix = "金99.99";
+				namePrefix = "AU99";
 			} else {
 				fullCode = "hf_" + code;
 			}
@@ -319,7 +415,7 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 			};
 
 			const req = https.request(options, (res) => {
-				const chunks: Buffer[] = [];
+				const chunks: Buffer[] =[];
 				res.on("data", (chunk: Buffer) => chunks.push(chunk));
 				res.on("end", () => {
 					const buffer = Buffer.concat(chunks);
