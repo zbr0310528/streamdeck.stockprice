@@ -246,6 +246,13 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 		return COLOR_NEUTRAL;
 	}
 
+	private formatName(name: string): string {
+		if (name.length > 6) {
+			return name.substring(0, 6);
+		}
+		return name;
+	}
+
 	private async updateDisplay(action: KeyAction<StockSettings>, settings: StockSettings): Promise<void> {
 		const { stockCode, assetType } = settings;
 
@@ -263,13 +270,13 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				return;
 			}
 
-			const price = indexData.price.toFixed(2);
+			const price = indexData.price.toFixed(3);
 			const change = indexData.changePercent;
 			const changeSymbol = change >= 0 ? "+" : "";
 
 			const textColor = this.getColorForChange(change);
 			await action.setImage(createColorBgImg(textColor));
-			await action.setTitle(`${indexData.name}\n${price}\n${changeSymbol}${change.toFixed(2)}%`);
+			await action.setTitle(`${this.formatName(indexData.name)}\n${price}\n${changeSymbol}${change.toFixed(2)}%`);
 		} else if (assetType === "gold") {
 			const goldData = await this.fetchGoldPrice(stockCode);
 			if (!goldData) {
@@ -278,14 +285,14 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				return;
 			}
 
-			const price = goldData.price.toFixed(2);
+			const price = goldData.price.toFixed(3);
 			const change = goldData.changePercent;
 			const changeSymbol = change >= 0 ? "+" : "";
 			const unit = goldData.unit === "USD" ? "$" : "¥";
 
 			const textColor = this.getColorForChange(change);
 			await action.setImage(createColorBgImg(textColor));
-			await action.setTitle(`${goldData.name}\n${unit}${price}\n${changeSymbol}${change.toFixed(2)}%`);
+			await action.setTitle(`${this.formatName(goldData.name)}\n${unit}${price}\n${changeSymbol}${change.toFixed(2)}%`);
 		} else {
 			const stockData = await this.fetchStockPrice(stockCode);
 			if (!stockData) {
@@ -294,7 +301,7 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				return;
 			}
 
-			const price = stockData.price.toFixed(2);
+			const price = stockData.price.toFixed(3);
 			const changePercent = stockData.close > 0
 				? ((stockData.price - stockData.close) / stockData.close * 100)
 				: 0;
@@ -302,7 +309,7 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 
 			const textColor = this.getColorForChange(changePercent);
 			await action.setImage(createColorBgImg(textColor));
-			await action.setTitle(`${stockData.name}\n¥${price}\n${changeSymbol}${changePercent.toFixed(2)}%`);
+			await action.setTitle(`${this.formatName(stockData.name)}\n¥${price}\n${changeSymbol}${changePercent.toFixed(2)}%`);
 		}
 	}
 
