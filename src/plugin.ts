@@ -364,7 +364,7 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 			if (parts.length < 10) return null;
 
 			const name = INDEX_NAMES[code] || parts[0];
-			const price = parseFloat(parts[1]) || 0;
+			const price = parseFloat(parts[3]) || 0;
 			const prevClose = parseFloat(parts[2]) || 0;
 			const changeValue = price - prevClose;
 			const changePercent = prevClose > 0 ? (changeValue / prevClose * 100) : 0;
