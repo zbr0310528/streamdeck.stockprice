@@ -16,6 +16,7 @@ const SINA_API_PATH = "/list=";
 type StockSettings = {
 	stockCode: string;
 	assetType: "stock" | "gold" | "index";
+	displayMode?: number;
 };
 
 const gbkDecoder = new TextDecoder("gbk");
@@ -221,7 +222,10 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 		if (!ev.action.isKey()) return;
 		const settings = ev.payload.settings;
 		if (settings.stockCode) {
-			await this.updateDisplay(ev.action, settings);
+			const newMode = ((settings.displayMode || 0) + 1) % 4;
+			const newSettings = { ...settings, displayMode: newMode };
+			ev.action.setSettings(newSettings);
+			await this.updateDisplay(ev.action, newSettings);
 		}
 	}
 
@@ -254,7 +258,8 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 	}
 
 	private async updateDisplay(action: KeyAction<StockSettings>, settings: StockSettings): Promise<void> {
-		const { stockCode, assetType } = settings;
+		const { stockCode, assetType, displayMode } = settings;
+		const mode = displayMode || 0;
 
 		if (!stockCode) {
 			await action.setImage(createColorBgImg(COLOR_NEUTRAL));
@@ -270,13 +275,11 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				return;
 			}
 
-			const price = indexData.price.toFixed(3);
 			const change = indexData.changePercent;
-			const changeSymbol = change >= 0 ? "+" : "";
-
 			const textColor = this.getColorForChange(change);
+			const lines = this.formatIndexDisplay(indexData, mode);
 			await action.setImage(createColorBgImg(textColor));
-			await action.setTitle(`${this.formatName(indexData.name)}\n${price}\n${changeSymbol}${change.toFixed(2)}%`);
+			await action.setTitle(lines.join("\n"));
 		} else if (assetType === "gold") {
 			const goldData = await this.fetchGoldPrice(stockCode);
 			if (!goldData) {
@@ -285,14 +288,11 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				return;
 			}
 
-			const price = goldData.price.toFixed(3);
 			const change = goldData.changePercent;
-			const changeSymbol = change >= 0 ? "+" : "";
-			const unit = goldData.unit === "USD" ? "$" : "¥";
-
 			const textColor = this.getColorForChange(change);
+			const lines = this.formatGoldDisplay(goldData, mode);
 			await action.setImage(createColorBgImg(textColor));
-			await action.setTitle(`${this.formatName(goldData.name)}\n${unit}${price}\n${changeSymbol}${change.toFixed(2)}%`);
+			await action.setTitle(lines.join("\n"));
 		} else {
 			const stockData = await this.fetchStockPrice(stockCode);
 			if (!stockData) {
@@ -301,16 +301,86 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				return;
 			}
 
-			const price = stockData.price.toFixed(3);
 			const changePercent = stockData.close > 0
 				? ((stockData.price - stockData.close) / stockData.close * 100)
 				: 0;
-			const changeSymbol = changePercent >= 0 ? "+" : "";
-
 			const textColor = this.getColorForChange(changePercent);
+			const lines = this.formatStockDisplay(stockData, mode);
 			await action.setImage(createColorBgImg(textColor));
-			await action.setTitle(`${this.formatName(stockData.name)}\n¥${price}\n${changeSymbol}${changePercent.toFixed(2)}%`);
+			await action.setTitle(lines.join("\n"));
 		}
+	}
+
+	private formatStockDisplay(data: any, mode: number): string[] {
+		const name = this.formatName(data.name);
+		const price = data.price.toFixed(3);
+		const changePercent = data.close > 0 ? ((data.price - data.close) / data.close * 100) : 0;
+		const changeSymbol = changePercent >= 0 ? "+" : "";
+		const unit = "¥";
+
+		switch (mode) {
+			case 0:
+				return [name, unit + price, changeSymbol + changePercent.toFixed(2) + "%"];
+			case 1:
+				return [name, "H:" + data.high.toFixed(2), "L:" + data.low.toFixed(2)];
+			case 2:
+				return [name, "V:" + this.formatVolume(data.volume), "A:" + this.formatAmount(data.amount)];
+			case 3:
+				return [name, "O:" + data.open.toFixed(2), "Y:" + data.close.toFixed(2)];
+			default:
+				return [name, unit + price, changeSymbol + changePercent.toFixed(2) + "%"];
+		}
+	}
+
+	private formatIndexDisplay(data: any, mode: number): string[] {
+		const name = this.formatName(data.name);
+		const price = data.price.toFixed(2);
+		const changeSymbol = data.changePercent >= 0 ? "+" : "";
+
+		switch (mode) {
+			case 0:
+				return [name, price, changeSymbol + data.changePercent.toFixed(2) + "%"];
+			case 1:
+				return [name, "H:" + data.high.toFixed(2), "L:" + data.low.toFixed(2)];
+			case 2:
+				return [name, "V:" + this.formatVolume(data.volume), "A:" + this.formatAmount(data.amount)];
+			case 3:
+				return [name, "O:" + data.open.toFixed(2), "Y:" + data.prevClose.toFixed(2)];
+			default:
+				return [name, price, changeSymbol + data.changePercent.toFixed(2) + "%"];
+		}
+	}
+
+	private formatGoldDisplay(data: any, mode: number): string[] {
+		const name = this.formatName(data.name);
+		const price = data.price.toFixed(3);
+		const unit = data.unit === "USD" ? "$" : "¥";
+		const changeSymbol = data.changePercent >= 0 ? "+" : "";
+
+		switch (mode) {
+			case 0:
+				return [name, unit + price, changeSymbol + data.changePercent.toFixed(2) + "%"];
+			case 1:
+				return [name, "H:" + data.high.toFixed(2), "L:" + data.low.toFixed(2)];
+			case 2:
+				return [name, "V:" + this.formatVolume(data.volume), "A:" + this.formatAmount(data.amount)];
+			case 3:
+				return [name, "O:" + data.open.toFixed(2), "Y:" + data.close.toFixed(2)];
+			default:
+				return [name, unit + price, changeSymbol + data.changePercent.toFixed(2) + "%"];
+		}
+	}
+
+	private formatVolume(vol: number): string {
+		if (vol >= 100000000) return (vol / 100000000).toFixed(2) + "E";
+		if (vol >= 10000) return (vol / 10000).toFixed(2) + "W";
+		return vol.toFixed(0);
+	}
+
+	private formatAmount(amt: number): string {
+		if (amt >= 100000000) return (amt / 100000000).toFixed(2) + "E";
+		if (amt >= 10000) return (amt / 10000).toFixed(2) + "W";
+		return amt.toFixed(0);
 	}
 
 	private fetchIndexPrice(code: string): Promise<any> {
@@ -373,8 +443,14 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				code: code,
 				name: name,
 				price: price,
+				open: parseFloat(parts[1]) || 0,
+				high: parseFloat(parts[4]) || 0,
+				low: parseFloat(parts[5]) || 0,
+				volume: parseInt(parts[8]) || 0,
+				amount: parseFloat(parts[9]) || 0,
 				change: changeValue,
-				changePercent: changePercent
+				changePercent: changePercent,
+				prevClose: prevClose
 			};
 		} catch (e) {
 			return null;
@@ -455,6 +531,12 @@ export class StockPriceAction extends SingletonAction<StockSettings> {
 				code: code,
 				name: name,
 				price: price,
+				open: parseFloat(parts[1]) || 0,
+				high: parseFloat(parts[4]) || 0,
+				low: parseFloat(parts[5]) || 0,
+				close: prevClose,
+				volume: parseInt(parts[8]) || 0,
+				amount: parseFloat(parts[9]) || 0,
 				change: changeValue,
 				changePercent: changePercent,
 				unit: unit
